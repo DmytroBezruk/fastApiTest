@@ -1,0 +1,60 @@
+name: Deploy Lambdas and Step Function
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'lambdas/**'
+      - 'terraform/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install AWS CLI
+        run: pip install awscli
+
+      # --- Build Lambda packages ---
+      - name: Build Lambda packages
+        run: |
+          mkdir -p build
+          cd lambdas
+          zip -r ../build/lambda_one.zip lambda_one.py common.py __init__.py
+          zip -r ../build/lambda_two.zip lambda_two.py common.py __init__.py
+
+      # --- Update Lambda code if lambdas changed ---
+      - name: Update Lambda One
+        if: contains(join(github.event.head_commit.modified, ' '), 'lambdas/')
+        run: |
+          aws lambda update-function-code \
+            --function-name lambda_one \
+            --zip-file fileb://build/lambda_one.zip
+
+      - name: Update Lambda Two
+        if: contains(join(github.event.head_commit.modified, ' '), 'lambdas/')
+        run: |
+          aws lambda update-function-code \
+            --function-name lambda_two \
+            --zip-file fileb://build/lambda_two.zip
+
+      # --- Update Step Function if terraform/ changed ---
+      - name: Update Step Function definition
+        if: contains(join(github.event.head_commit.modified, ' '), 'terraform/')
+        run: |
+          aws stepfunctions update-state-machine \
+            --state-machine-arn arn:aws:states:us-east-1:${{ secrets.AWS_ACCOUNT_ID }}:stateMachine:fastapi_step_function \
+            --definition "$(cat terraform/step_function_definition.json)"
