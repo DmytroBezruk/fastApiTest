@@ -9,6 +9,7 @@ hypercorn = "*"
 uvloop = "*"
 pydantic = "*"
 pydantic-settings = "*"
+boto3 = "*"
 
 [requires]
 python_version = "3.12"

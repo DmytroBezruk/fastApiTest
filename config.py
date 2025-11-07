@@ -18,6 +18,10 @@ class GlobalConfig(BaseSettings):
     # HTTP_BIND represents ONLY the port number from environment.
     HTTP_BIND: str
 
+    # AWS
+    AWS_ACCOUNT_ID: str
+    AWS_REGION: str = "us-east-1"
+
     @validator("HTTP_BIND")
     def validate_http_bind(cls, v: str) -> str:  # noqa: N805
         if not v.isdigit():

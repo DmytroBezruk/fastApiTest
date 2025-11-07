@@ -7,29 +7,44 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100
 
-# Install system deps (if needed for uvloop)
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+# --- System dependencies ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential zip curl unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install pipenv
+# --- Install Terraform ---
+ARG TERRAFORM_VERSION=1.9.2
+RUN curl -fsSL https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+    -o terraform.zip \
+    && unzip terraform.zip -d /usr/local/bin \
+    && rm terraform.zip
+
+# --- Install pipenv ---
 RUN pip install --no-cache-dir pipenv
 
 WORKDIR /app
 
-# Copy dependency manifests first for better layer caching
+# --- Copy dependency manifests ---
 COPY Pipfile ./
-# Optional: if you later add a Pipfile.lock it'll speed reproducibility
-# COPY Pipfile.lock ./
-
-# Install prod dependencies into system site-packages (no virtualenv)
 RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --system --skip-lock --clear
 
-# Copy application code
+# --- Copy all code ---
 COPY . .
 
-# Do not hardcode port here; compose handles mapping using HTTP_BIND env var (port-only).
-# EXPOSE omitted intentionally to avoid duplicating the port configuration.
+# --- Build Lambda packages ---
+RUN mkdir -p build \
+    && cd lambdas \
+    && zip -r ../build/lambda_one.zip lambda_one.py common.py __init__.py \
+    && zip -r ../build/lambda_two.zip lambda_two.py common.py __init__.py \
+    && cd ..
 
-# Default environment; override via compose env_file
+# --- Environment variables ---
 ENV ENVIRONMENT=local
 
-CMD ["python", "server.py"]
+ENV AWS_REGION=${AWS_REGION}
+ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+
+# --- Default CMD ---
+# Terraform will use AWS credentials from .env at runtime, then start FastAPI
+CMD cd terraform && terraform init -input=false && terraform apply -auto-approve -input=false && cd /app && python server.py
