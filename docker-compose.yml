@@ -1,0 +1,11 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "${HTTP_BIND}:${HTTP_BIND}"  # host_port:container_port using single source of truth (port only)
+    restart: unless-stopped
+    working_dir: /app
+    command: ["python", "server.py"]
+

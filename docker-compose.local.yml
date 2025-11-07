@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    env_file: .env
+    restart: unless-stopped
+    working_dir: /app
+    command: ["python", "server.py"]
+    # If you want live reload in dev, uncomment below and add dev dependency uvicorn[standard]
+    # volumes:
+    #   - .:/app
+
+# Deprecated compose file. Use docker-compose.yml only.
