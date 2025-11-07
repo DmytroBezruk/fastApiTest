@@ -30,6 +30,8 @@ resource "aws_sfn_state_machine" "example" {
   name     = "fastapi_step_function"
   role_arn = aws_iam_role.lambda_role.arn
 
+  type     = "EXPRESS"
+
   definition = jsonencode({
     Comment = "Step Function chaining two Lambdas",
     StartAt = "LambdaOne",
