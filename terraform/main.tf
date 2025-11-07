@@ -6,9 +6,10 @@ locals {
   build_path = "${path.module}/../build"
 }
 
+# Lambda One
 resource "aws_lambda_function" "lambda_one" {
   function_name = "lambda_one"
-  role          = aws_iam_role.lambda_role.arn
+  role          = length(aws_iam_role.lambda_role) > 0 ? aws_iam_role.lambda_role[0].arn : data.aws_iam_role.existing_role.arn
   handler       = "lambda_one.lambda_handler"
   runtime       = "python3.12"
 
@@ -16,9 +17,10 @@ resource "aws_lambda_function" "lambda_one" {
   source_code_hash = filebase64sha256("${local.build_path}/lambda_one.zip")
 }
 
+# Lambda Two
 resource "aws_lambda_function" "lambda_two" {
   function_name = "lambda_two"
-  role          = aws_iam_role.lambda_role.arn
+  role          = length(aws_iam_role.lambda_role) > 0 ? aws_iam_role.lambda_role[0].arn : data.aws_iam_role.existing_role.arn
   handler       = "lambda_two.lambda_handler"
   runtime       = "python3.12"
 
@@ -26,9 +28,10 @@ resource "aws_lambda_function" "lambda_two" {
   source_code_hash = filebase64sha256("${local.build_path}/lambda_two.zip")
 }
 
+# Step Function
 resource "aws_sfn_state_machine" "example" {
   name     = "fastapi_step_function"
-  role_arn = aws_iam_role.lambda_role.arn
+  role_arn = length(aws_iam_role.lambda_role) > 0 ? aws_iam_role.lambda_role[0].arn : data.aws_iam_role.existing_role.arn
 
   type     = "EXPRESS"
 
@@ -50,6 +53,7 @@ resource "aws_sfn_state_machine" "example" {
   })
 }
 
+# Output
 output "step_function_arn" {
   value = aws_sfn_state_machine.example.arn
 }
