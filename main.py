@@ -45,14 +45,30 @@ class StartStepRequest(BaseModel):
 def run_step_function(data: StartStepRequest):
     try:
         sfn = boto3.client("stepfunctions", region_name=settings.AWS_REGION)
-        step_arn = f"arn:aws:states:us-east-1:{settings.AWS_ACCOUNT_ID}:stateMachine:fastapi_step_function"
+        step_arn = f"arn:aws:states:{settings.AWS_REGION}:{settings.AWS_ACCOUNT_ID}:stateMachine:fastapi_step_function"
 
         response = sfn.start_sync_execution(
             stateMachineArn=step_arn,
-            input=json.dumps(data.dict())
+            input=json.dumps(data.model_dump())
         )
         print(f'\n{response = }\n')
-        output = json.loads(response["output"]) if "output" in response else {}
-        return {"step_function_output": output}
+        output_raw = response.get("output")
+        parsed = {}
+        if output_raw:
+            try:
+                parsed = json.loads(output_raw)
+            except json.JSONDecodeError:
+                parsed = {"raw_output": output_raw}
+        # If lambdas returned API Gateway style, drill down
+        if isinstance(parsed, dict):
+            # Try unwrap lambda_two body if present
+            body = parsed.get("body")
+            if body and isinstance(body, str):
+                try:
+                    parsed_body = json.loads(body)
+                    parsed["body_unwrapped"] = parsed_body
+                except json.JSONDecodeError:
+                    pass
+        return {"step_function_output": parsed}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

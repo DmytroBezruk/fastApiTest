@@ -36,13 +36,6 @@ RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --system --skip-lock --clear
 # --- Copy project ---
 COPY . .
 
-# --- Build Lambda packages ---
-RUN mkdir -p build \
-    && cd lambdas \
-    && zip -r ../build/lambda_one.zip lambda_one.py common.py __init__.py \
-    && zip -r ../build/lambda_two.zip lambda_two.py common.py __init__.py \
-    && cd ..
-
 COPY startup.sh /app/startup.sh
 RUN chmod +x /app/startup.sh
 
