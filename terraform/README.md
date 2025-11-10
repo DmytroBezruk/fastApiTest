@@ -123,3 +123,20 @@ Use Option 1 (import) to keep existing ARNs stable.
 - Add CloudWatch log retention
 - Add error handling and retries in the State Machine definition
 - Add API Gateway to trigger the first Lambda directly
+
+## New Conditional Start (ValueDecision)
+The state machine now begins with a Choice state:
+- If `$.value > 10000` it invokes `lambda_words` which returns both numeric and English words for the final result (`value + multiplier`).
+- Otherwise it follows the original numeric path: lambda_one -> pass -> lambda_two.
+
+Lambda outputs:
+- `lambda_words`: `{ final_result, final_result_words }` (body JSON inside `statusCode` wrapper)
+- Regular path ends with `lambda_two` producing `{ final_result }`
+
+To test the words branch:
+```bash
+curl -X POST http://localhost:$HTTP_BIND/run-step-function \
+  -H 'Content-Type: application/json' \
+  -d '{"value": 20001, "multiplier": 3}'
+```
+Expect `final_result_words` in the output

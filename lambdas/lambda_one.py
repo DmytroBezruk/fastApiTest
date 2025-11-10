@@ -1,5 +1,5 @@
 import json
-from common import ProcessData, process_value
+from common import validate_input, process_value
 
 def lambda_handler(event, context):
     try:
@@ -13,7 +13,7 @@ def lambda_handler(event, context):
             body = json.loads(body)
         if not isinstance(body, dict):
             raise ValueError("Event body must be a JSON object with required fields")
-        data = ProcessData(**body)
+        data = validate_input(body)
         result = process_value(data)
         # Provide a canonical 'value' field for downstream tasks
         result["value"] = data.value

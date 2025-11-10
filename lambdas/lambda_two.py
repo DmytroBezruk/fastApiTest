@@ -1,4 +1,5 @@
 import json
+from common import validate_input
 
 
 def lambda_handler(event, context):
@@ -27,6 +28,7 @@ def lambda_handler(event, context):
         if "result" in event:
             final_value = event["result"]
 
+        data = validate_input(event)
         result = {
             "step": "lambda_two",
             "final_result": final_value + event.get("multiplier", 0),

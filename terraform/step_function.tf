@@ -21,26 +21,43 @@ resource "aws_iam_role_policy" "step_functions_policy" {
         Action = ["lambda:InvokeFunction"],
         Resource = [
           aws_lambda_function.lambda_one.arn,
-          aws_lambda_function.lambda_two.arn
+          aws_lambda_function.lambda_two.arn,
+          aws_lambda_function.lambda_words.arn
         ]
       }
     ]
   })
 }
 
-# State Machine: LambdaOne -> Choice -> Pass -> LambdaTwo -> Succeed/Fail (Express type for synchronous execution via StartSyncExecution)
+# State Machine: Choice start -> either words path or numeric path
 resource "aws_sfn_state_machine" "fastapi_step_function" {
   name     = "fastapi_step_function"
   role_arn = aws_iam_role.step_functions_role.arn
   type     = "EXPRESS"
   definition = jsonencode({
-    Comment = "FastAPI two-step Lambda workflow with Choice/Pass/Fail/Succeed",
-    StartAt = "LambdaOne",
+    Comment = "FastAPI workflow: Choice start -> either words path or numeric path",
+    StartAt = "ValueDecision",
     States = {
+      ValueDecision = {
+        Type    = "Choice",
+        Choices = [
+          {
+            Variable     = "$.value",
+            NumericGreaterThan = 10000,
+            Next         = "LambdaWords"
+          }
+        ],
+        Default = "LambdaOne"
+      },
+      LambdaWords = {
+        Type     = "Task",
+        Resource = aws_lambda_function.lambda_words.arn,
+        Next     = "SuccessState"
+      },
       LambdaOne = {
-        Type = "Task",
+        Type     = "Task",
         Resource = aws_lambda_function.lambda_one.arn,
-        Next = "ChoiceAfterFirst"
+        Next     = "ChoiceAfterFirst"
       },
       ChoiceAfterFirst = {
         Type    = "Choice",
@@ -64,14 +81,8 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
         Resource = aws_lambda_function.lambda_two.arn,
         Next     = "SuccessState"
       },
-      SuccessState = {
-        Type = "Succeed"
-      },
-      FailureState = {
-        Type  = "Fail",
-        Error = "LambdaOneFailed",
-        Cause = "statusCode not 200"
-      }
+      SuccessState = { Type = "Succeed" },
+      FailureState = { Type = "Fail", Error = "LambdaFlowFailed", Cause = "Non-200 status code" }
     }
   })
 }
