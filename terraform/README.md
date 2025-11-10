@@ -55,8 +55,55 @@ If Lambda code requires third-party packages:
 terraform destroy -var aws_account_id=YOUR_ACCOUNT_ID -var environment=dev -auto-approve
 ```
 
+## Handling Existing IAM Roles (409 EntityAlreadyExists)
+If you previously created the IAM roles manually (or from an earlier failed apply), Terraform will fail with:
+```
+EntityAlreadyExists: Role with name fastapi-test-lambda-role-dev already exists
+```
+You have two options:
+
+### Option 1: Import existing roles into Terraform state
+Run inside `terraform/` directory (adjust names if you changed environment):
+```bash
+terraform init
+terraform import aws_iam_role.lambda_role fastapi-test-lambda-role-dev
+terraform import aws_iam_role.step_functions_role fastapi-test-sfn-role-dev
+```
+Then rerun:
+```bash
+terraform apply -var aws_account_id=YOUR_ACCOUNT_ID -var environment=dev
+```
+Terraform will then manage those roles.
+
+### Option 2: Delete roles manually and re-apply
+Detach policies first, then delete roles:
+```bash
+aws iam detach-role-policy \
+  --role-name fastapi-test-lambda-role-dev \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+aws iam delete-role --role-name fastapi-test-lambda-role-dev
+
+aws iam detach-role-policy \
+  --role-name fastapi-test-sfn-role-dev \
+  --policy-arn arn:aws:iam::aws:policy/CloudWatchLogsFullAccess || true
+aws iam delete-role --role-name fastapi-test-sfn-role-dev
+```
+(Adjust policies if different.) Then:
+```bash
+terraform apply -var aws_account_id=YOUR_ACCOUNT_ID -var environment=dev
+```
+
+### Option 3: Change role names
+Add a suffix by editing `lambdas.tf` and `step_function.tf` resource names:
+```hcl
+name = "${var.project_name}-lambda-role-${var.environment}-v2"
+```
+But prefer import to avoid orphaned roles.
+
+## Recommended
+Use Option 1 (import) to keep existing ARNs stable.
+
 ## Next Steps
 - Add CloudWatch log retention
 - Add error handling and retries in the State Machine definition
 - Add API Gateway to trigger the first Lambda directly
-

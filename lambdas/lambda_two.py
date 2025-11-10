@@ -1,5 +1,5 @@
 import json
-from lambdas.common import ProcessData
+from common import ProcessData
 
 def lambda_handler(event, context):
     try:

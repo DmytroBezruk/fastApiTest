@@ -28,11 +28,11 @@ resource "aws_iam_role_policy" "step_functions_policy" {
   })
 }
 
-# State Machine: LambdaOne -> LambdaTwo
-# Using the basic Lambda invocation style; output of LambdaOne becomes input to LambdaTwo.
+# State Machine: LambdaOne -> LambdaTwo (Express type for synchronous execution via StartSyncExecution)
 resource "aws_sfn_state_machine" "fastapi_step_function" {
   name     = "fastapi_step_function"
   role_arn = aws_iam_role.step_functions_role.arn
+  type     = "EXPRESS"
   definition = jsonencode({
     Comment = "FastAPI two-step Lambda workflow",
     StartAt = "LambdaOne",
@@ -50,5 +50,3 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
     }
   })
 }
-
-output "state_machine_arn" { value = aws_sfn_state_machine.fastapi_step_function.arn }
