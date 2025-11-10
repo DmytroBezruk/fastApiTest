@@ -43,17 +43,8 @@ RUN mkdir -p build \
     && zip -r ../build/lambda_two.zip lambda_two.py common.py __init__.py \
     && cd ..
 
-# --- Default CMD ---
-# Checks if Lambda and Step Function exist before Terraform apply
-CMD bash -c '\
-set -e; \
-echo "🔍 Checking AWS resources..."; \
-if aws lambda get-function --function-name lambda_one >/dev/null 2>&1 && \
-   aws stepfunctions describe-state-machine --state-machine-arn arn:aws:states:${AWS_REGION}:${AWS_ACCOUNT_ID}:stateMachine:fastapi_step_function >/dev/null 2>&1; then \
-    echo "✅ Lambda & Step Function already exist. Skipping Terraform."; \
-else \
-    echo "🚀 Missing AWS resources. Running Terraform..."; \
-    cd terraform && terraform init -input=false && terraform apply -auto-approve -input=false; \
-fi; \
-echo "▶️ Starting FastAPI..."; \
-python server.py'
+COPY startup.sh /app/startup.sh
+RUN chmod +x /app/startup.sh
+
+# Use the startup script
+CMD ["/app/startup.sh"]

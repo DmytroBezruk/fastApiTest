@@ -51,7 +51,8 @@ def run_step_function(data: StartStepRequest):
             stateMachineArn=step_arn,
             input=json.dumps(data.dict())
         )
-        output = json.loads(response["output"])
+        print(f'\n{response = }\n')
+        output = json.loads(response["output"]) if "output" in response else {}
         return {"step_function_output": output}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

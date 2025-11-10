@@ -25,8 +25,9 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install AWS CLI
-        run: pip install awscli
+      - name: Install dependencies
+        run: |
+          pip install awscli
 
       # --- Build Lambda packages ---
       - name: Build Lambda packages
@@ -36,25 +37,53 @@ jobs:
           zip -r ../build/lambda_one.zip lambda_one.py common.py __init__.py
           zip -r ../build/lambda_two.zip lambda_two.py common.py __init__.py
 
-      # --- Update Lambda code if lambdas changed ---
-      - name: Update Lambda One
-        if: contains(join(github.event.head_commit.modified, ' '), 'lambdas/')
-        run: |
-          aws lambda update-function-code \
-            --function-name lambda_one \
-            --zip-file fileb://build/lambda_one.zip
+      # --- Setup Terraform ---
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
 
-      - name: Update Lambda Two
-        if: contains(join(github.event.head_commit.modified, ' '), 'lambdas/')
-        run: |
-          aws lambda update-function-code \
-            --function-name lambda_two \
-            --zip-file fileb://build/lambda_two.zip
+      - name: Terraform Format
+        id: fmt
+        run: terraform fmt -check -recursive terraform/
 
-      # --- Update Step Function if terraform/ changed ---
-      - name: Update Step Function definition
-        if: contains(join(github.event.head_commit.modified, ' '), 'terraform/')
+      - name: Terraform Init
+        id: init
+        run: terraform -chdir=terraform init
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform -chdir=terraform validate
+
+      - name: Terraform Plan
+        id: plan
         run: |
-          aws stepfunctions update-state-machine \
-            --state-machine-arn arn:aws:states:us-east-1:${{ secrets.AWS_ACCOUNT_ID }}:stateMachine:fastapi_step_function \
-            --definition "$(cat terraform/step_function_definition.json)"
+          terraform -chdir=terraform plan \
+            -var="aws_region=$AWS_REGION" \
+            -var="create_lambda_one=true" \
+            -var="create_lambda_two=true" \
+            -var="create_step_function=true"
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          terraform -chdir=terraform apply \
+            -var="aws_region=$AWS_REGION" \
+            -var="create_lambda_one=true" \
+            -var="create_lambda_two=true" \
+            -var="create_step_function=true" \
+            -auto-approve
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # --- Optional: Get Step Function ARN output ---
+      - name: Get Step Function ARN
+        run: |
+          terraform -chdir=terraform output step_function_arn
