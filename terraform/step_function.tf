@@ -28,24 +28,49 @@ resource "aws_iam_role_policy" "step_functions_policy" {
   })
 }
 
-# State Machine: LambdaOne -> LambdaTwo (Express type for synchronous execution via StartSyncExecution)
+# State Machine: LambdaOne -> Choice -> Pass -> LambdaTwo -> Succeed/Fail (Express type for synchronous execution via StartSyncExecution)
 resource "aws_sfn_state_machine" "fastapi_step_function" {
   name     = "fastapi_step_function"
   role_arn = aws_iam_role.step_functions_role.arn
   type     = "EXPRESS"
   definition = jsonencode({
-    Comment = "FastAPI two-step Lambda workflow",
+    Comment = "FastAPI two-step Lambda workflow with Choice/Pass/Fail/Succeed",
     StartAt = "LambdaOne",
     States = {
       LambdaOne = {
-        Type     = "Task",
+        Type = "Task",
         Resource = aws_lambda_function.lambda_one.arn,
-        Next     = "LambdaTwo"
+        Next = "ChoiceAfterFirst"
+      },
+      ChoiceAfterFirst = {
+        Type    = "Choice",
+        Choices = [
+          {
+            Variable      = "$.statusCode",
+            NumericEquals = 200,
+            Next          = "PassPrep"
+          }
+        ],
+        Default = "FailureState"
+      },
+      PassPrep = {
+        Type       = "Pass",
+        Result     = { note = "Passing through before LambdaTwo" },
+        ResultPath = "$.pass_info",
+        Next       = "LambdaTwo"
       },
       LambdaTwo = {
         Type     = "Task",
         Resource = aws_lambda_function.lambda_two.arn,
-        End      = true
+        Next     = "SuccessState"
+      },
+      SuccessState = {
+        Type = "Succeed"
+      },
+      FailureState = {
+        Type  = "Fail",
+        Error = "LambdaOneFailed",
+        Cause = "statusCode not 200"
       }
     }
   })
