@@ -1,0 +1,2 @@
+# Dependencies bundled into each Lambda deployment package
+pydantic==1.10.15

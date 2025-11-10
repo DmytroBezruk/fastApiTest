@@ -45,10 +45,26 @@ terraform apply -var aws_account_id=YOUR_ACCOUNT_ID -var environment=dev -auto-a
 ```
 Terraform will repackage zips and update functions.
 
-## Adding Dependencies
-If Lambda code requires third-party packages:
-1. Create a `requirements-lambda.txt` listing packages.
-2. Replace `data "archive_file"` with an external packaging step (e.g., a script to build a deployment folder including site-packages) or use Terraform `null_resource` + local build.
+## Dependency Packaging for Lambdas
+We now bundle Python dependencies (e.g., pydantic) into each Lambda zip using a `null_resource` in `lambdas.tf` and the file `requirements-lambda.txt` at project root.
+
+How it works:
+- Terraform calculates a hash of each lambda source file and `requirements-lambda.txt`.
+- On any change, it re-runs a local packaging script which:
+  - Creates `build/lambda_one.zip` and `build/lambda_two.zip` with dependencies + source files.
+- Lambda resources reference those zip files directly.
+
+To force rebuild (e.g., if something seems cached):
+```bash
+terraform taint null_resource.package_lambdas
+terraform apply -var aws_account_id=YOUR_ACCOUNT_ID -var environment=dev -auto-approve
+```
+
+Add a new dependency:
+1. Edit `requirements-lambda.txt`.
+2. Apply again (`terraform apply ...`).
+
+Note: For compiled dependencies ensure you package on an x86_64 Linux environment matching AWS Lambda (Amazon Linux). Pure Python libs like pydantic are fine from most environments.
 
 ## Destroy
 ```bash
