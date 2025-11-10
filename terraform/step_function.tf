@@ -3,8 +3,8 @@ resource "aws_iam_role" "step_functions_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "states.amazonaws.com" }
     }]
   })
@@ -38,14 +38,14 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
     StartAt = "LambdaOne",
     States = {
       LambdaOne = {
-        Type = "Task",
+        Type     = "Task",
         Resource = aws_lambda_function.lambda_one.arn,
-        Next = "LambdaTwo"
+        Next     = "LambdaTwo"
       },
       LambdaTwo = {
-        Type = "Task",
+        Type     = "Task",
         Resource = aws_lambda_function.lambda_two.arn,
-        End = true
+        End      = true
       }
     }
   })
