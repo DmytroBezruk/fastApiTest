@@ -70,9 +70,7 @@ def run_step_function(data: StartStepRequest):
         return {"execution": {
             "arn": response.get("executionArn"),
             "status": response.get("status"),
-            "trace": parsed.get("trace"),
-            "final": parsed.get("final"),
-            "raw": parsed
+            "result": parsed
         }}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
