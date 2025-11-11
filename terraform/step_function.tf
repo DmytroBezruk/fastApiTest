@@ -40,10 +40,10 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
     States = {
       Init = {
         Type = "Pass",
-        ResultPath = "$.trace",
-        Result = {
-          steps = {}  # use object map instead of array
-        },
+        # ResultPath = "$.trace",
+        # Result = {
+        #   steps = {}  # use object map instead of array
+        # },
         Next = "BranchChoice"
       },
       BranchChoice = {
@@ -63,12 +63,12 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       RecordAdd = {
         Type = "Pass",
-        Parameters = {
-          name = "AddOp",
-          input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
-          output = { "result.$" = "$.add_result.result", "full.$" = "$.add_result" }
-        },
-        ResultPath = "$.trace.steps.AddOp",
+        # Parameters = {
+        #   name = "AddOp",
+        #   input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+        #   output = { "result.$" = "$.add_result.result", "full.$" = "$.add_result" }
+        # },
+        # ResultPath = "$.trace.steps.AddOp",
         Next = "Finalize"
       },
       MultiplyOp = {
@@ -79,12 +79,12 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       RecordMultiply = {
         Type = "Pass",
-        Parameters = {
-          name = "MultiplyOp",
-          input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
-          output = { "result.$" = "$.multiply_result.result", "full.$" = "$.multiply_result" }
-        },
-        ResultPath = "$.trace.steps.MultiplyOp",
+        # Parameters = {
+        #   name = "MultiplyOp",
+        #   input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+        #   output = { "result.$" = "$.multiply_result.result", "full.$" = "$.multiply_result" }
+        # },
+        # ResultPath = "$.trace.steps.MultiplyOp",
         Next = "Finalize"
       },
       PowerOp = {
@@ -95,23 +95,23 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       RecordPower = {
         Type = "Pass",
-        Parameters = {
-          name = "PowerOp",
-          input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
-          output = { "result.$" = "$.power_result.result", "full.$" = "$.power_result" }
-        },
-        ResultPath = "$.trace.steps.PowerOp",
+        # Parameters = {
+        #   name = "PowerOp",
+        #   input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+        #   output = { "result.$" = "$.power_result.result", "full.$" = "$.power_result" }
+        # },
+        # ResultPath = "$.trace.steps.PowerOp",
         Next = "Finalize"
       },
       Finalize = {
         Type = "Pass",
-        Parameters = {
-          summary = {
-            input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
-            "trace.$" = "$.trace.steps"
-          }
-        },
-        ResultPath = "$.final",
+        # Parameters = {
+        #   summary = {
+        #     input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+        #     "trace.$" = "$.trace.steps"
+        #   }
+        # },
+        # ResultPath = "$.final",
         Next = "SuccessState"
       },
       SuccessState = { Type = "Succeed" },

@@ -1,3 +1,5 @@
+# lambda_power.py
+
 import json
 
 def lambda_handler(event, context):
@@ -6,15 +8,10 @@ def lambda_handler(event, context):
             event = json.loads(event)
         number = int(event.get("number"))
         factor = int(event.get("factor"))
-        branch = event.get("branch")
         result = number ** factor
         output = {
             "statusCode": 200,
-            "operation": "power",
-            "number": number,
-            "factor": factor,
-            "branch": branch,
-            "result": result
+            "result": result,
         }
         return output
     except Exception as e:
