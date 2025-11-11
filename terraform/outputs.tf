@@ -4,3 +4,6 @@ output "lambda_words_arn" { value = aws_lambda_function.lambda_words.arn }
 output "state_machine_arn" { value = aws_sfn_state_machine.fastapi_step_function.arn }
 output "lambda_compute_product_arn" { value = aws_lambda_function.lambda_compute_product.arn }
 output "lambda_aggregate_arn" { value = aws_lambda_function.lambda_aggregate.arn }
+output "lambda_add_arn" { value = aws_lambda_function.lambda_add.arn }
+output "lambda_multiply_arn" { value = aws_lambda_function.lambda_multiply.arn }
+output "lambda_power_arn" { value = aws_lambda_function.lambda_power.arn }

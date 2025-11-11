@@ -40,6 +40,27 @@ data "archive_file" "lambda_aggregate_zip" {
   excludes    = ["__pycache__"]
 }
 
+data "archive_file" "lambda_add_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_add.zip"
+  excludes    = ["__pycache__"]
+}
+
+data "archive_file" "lambda_multiply_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_multiply.zip"
+  excludes    = ["__pycache__"]
+}
+
+data "archive_file" "lambda_power_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_power.zip"
+  excludes    = ["__pycache__"]
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role-${var.environment}"
   assume_role_policy = jsonencode({
@@ -112,6 +133,42 @@ resource "aws_lambda_function" "lambda_aggregate" {
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_aggregate_zip.output_path
   source_code_hash = data.archive_file.lambda_aggregate_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_add" {
+  function_name    = "${var.project_name}-lambda-add-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_add.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_add_zip.output_path
+  source_code_hash = data.archive_file.lambda_add_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_multiply" {
+  function_name    = "${var.project_name}-lambda-multiply-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_multiply.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_multiply_zip.output_path
+  source_code_hash = data.archive_file.lambda_multiply_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_power" {
+  function_name    = "${var.project_name}-lambda-power-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_power.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_power_zip.output_path
+  source_code_hash = data.archive_file.lambda_power_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
   environment { variables = { ENVIRONMENT = var.environment } }

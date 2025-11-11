@@ -20,130 +20,85 @@ resource "aws_iam_role_policy" "step_functions_policy" {
         Effect = "Allow"
         Action = ["lambda:InvokeFunction"],
         Resource = [
-          aws_lambda_function.lambda_one.arn,
-          aws_lambda_function.lambda_two.arn,
-          aws_lambda_function.lambda_words.arn,
-          aws_lambda_function.lambda_compute_product.arn,
-          aws_lambda_function.lambda_aggregate.arn
+          aws_lambda_function.lambda_add.arn,
+          aws_lambda_function.lambda_multiply.arn,
+          aws_lambda_function.lambda_power.arn
         ]
       }
     ]
   })
 }
 
-# State Machine: Choice start -> either words path or numeric path
+# State Machine: Branching arithmetic workflow: add, multiply, power
 resource "aws_sfn_state_machine" "fastapi_step_function" {
   name     = "fastapi_step_function"
   role_arn = aws_iam_role.step_functions_role.arn
   type     = "EXPRESS"
   definition = jsonencode({
-    Comment = "FastAPI workflow with product map branch",
-    StartAt = "ValueDecision",
+    Comment = "Branching arithmetic workflow: add, multiply, power",
+    StartAt = "Init",
     States = {
-      ValueDecision = {
+      Init = {
+        Type = "Pass",
+        ResultPath = "$.trace",
+        Result = {
+          steps = []
+        },
+        Next = "BranchChoice"
+      },
+      BranchChoice = {
         Type = "Choice",
         Choices = [
-          {
-            Variable = "$.value",
-            NumericGreaterThan = 10000,
-            Next = "LambdaWords"
-          }
+          { Variable = "$.branch", StringEquals = "one", Next = "AddOp" },
+          { Variable = "$.branch", StringEquals = "two", Next = "MultiplyOp" },
+          { Variable = "$.branch", StringEquals = "three", Next = "PowerOp" }
         ],
-        Default = "ComputeProduct"
+        Default = "FailUnknownBranch"
       },
-      LambdaWords = {
+      AddOp = {
         Type = "Task",
-        Resource = aws_lambda_function.lambda_words.arn,
+        Resource = aws_lambda_function.lambda_add.arn,
+        ResultPath = "$.add_result",
+        Next = "RecordAdd"
+      },
+      RecordAdd = {
+        Type = "Pass",
+        ResultPath = "$.trace.steps[0]",
+        Result = { name = "AddOp", input = { "number.$" = "$.number", "factor.$" = "$.factor" }, output = { "result.$" = "$.add_result.result" } },
+        Next = "Finalize"
+      },
+      MultiplyOp = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_multiply.arn,
+        ResultPath = "$.multiply_result",
+        Next = "RecordMultiply"
+      },
+      RecordMultiply = {
+        Type = "Pass",
+        ResultPath = "$.trace.steps[0]",
+        Result = { name = "MultiplyOp", input = { "number.$" = "$.number", "factor.$" = "$.factor" }, output = { "result.$" = "$.multiply_result.result" } },
+        Next = "Finalize"
+      },
+      PowerOp = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_power.arn,
+        ResultPath = "$.power_result",
+        Next = "RecordPower"
+      },
+      RecordPower = {
+        Type = "Pass",
+        ResultPath = "$.trace.steps[0]",
+        Result = { name = "PowerOp", input = { "number.$" = "$.number", "factor.$" = "$.factor" }, output = { "result.$" = "$.power_result.result" } },
+        Next = "Finalize"
+      },
+      Finalize = {
+        Type = "Pass",
+        ResultPath = "$.final",
+        Result = { summary = { "input.$" = "$" } },
         Next = "SuccessState"
       },
-      ComputeProduct = {
-        Type = "Task",
-        Resource = aws_lambda_function.lambda_compute_product.arn,
-        Next = "ProductDecision"
-      },
-      ProductDecision = {
-        Type = "Choice",
-        Choices = [
-          {
-            Variable = "$.product", # product now top-level from lambda_compute_product
-            NumericGreaterThan = 1000,
-            Next = "MapParts"
-          }
-        ],
-        Default = "LambdaOne"
-      },
-      MapParts = {
-        Type = "Map",
-        ItemsPath = "$.parts",
-        MaxConcurrency = 5,
-        Iterator = {
-          StartAt = "WordsEachPart",
-          States = {
-            WordsEachPart = {
-              Type = "Task",
-              Resource = aws_lambda_function.lambda_words.arn,
-              Parameters = {
-                "value.$" = "$",  # current item value
-                "multiplier" = 0
-              },
-              End = true
-            }
-          }
-        },
-        ResultPath = "$.mapped_parts",
-        Next = "AggregateParts"
-      },
-      AggregateParts = {
-        Type = "Task",
-        Resource = aws_lambda_function.lambda_aggregate.arn,
-        Parameters = {
-          "mapped.$" = "$.mapped_parts",
-          "value.$" = "$.value",
-          "multiplier.$" = "$.multiplier",
-          "product.$" = "$.product"
-        },
-        Next = "PostAggregateChoice"
-      },
-      PostAggregateChoice = {
-        Type = "Choice",
-        Choices = [
-          {
-            Variable = "$.aggregated_total",
-            NumericGreaterThan = 5000,
-            Next = "SuccessState"
-          }
-        ],
-        Default = "LambdaOne"
-      },
-      LambdaOne = {
-        Type     = "Task",
-        Resource = aws_lambda_function.lambda_one.arn,
-        Next     = "ChoiceAfterFirst"
-      },
-      ChoiceAfterFirst = {
-        Type    = "Choice",
-        Choices = [
-          {
-            Variable      = "$.statusCode",
-            NumericEquals = 200,
-            Next          = "PassPrep"
-          }
-        ],
-        Default = "FailureState"
-      },
-      PassPrep = {
-        Type       = "Pass",
-        Result     = { note = "Passing through before LambdaTwo" },
-        ResultPath = "$.pass_info",
-        Next       = "LambdaTwo"
-      },
-      LambdaTwo = {
-        Type     = "Task",
-        Resource = aws_lambda_function.lambda_two.arn,
-        Next     = "SuccessState"
-      },
       SuccessState = { Type = "Succeed" },
-      FailureState = { Type = "Fail", Error = "LambdaFlowFailed", Cause = "Non-200 status code" }
+      FailUnknownBranch = { Type = "Fail", Error = "UnknownBranch", Cause = "branch must be one|two|three" }
     }
   })
 }
