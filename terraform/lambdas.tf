@@ -26,6 +26,20 @@ data "archive_file" "lambda_words_zip" {
   excludes    = ["__pycache__"]
 }
 
+data "archive_file" "lambda_compute_product_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_compute_product.zip"
+  excludes    = ["__pycache__"]
+}
+
+data "archive_file" "lambda_aggregate_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_aggregate.zip"
+  excludes    = ["__pycache__"]
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role-${var.environment}"
   assume_role_policy = jsonencode({
@@ -74,6 +88,30 @@ resource "aws_lambda_function" "lambda_words" {
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_words_zip.output_path
   source_code_hash = data.archive_file.lambda_words_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_compute_product" {
+  function_name    = "${var.project_name}-lambda-compute-product-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_compute_product.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_compute_product_zip.output_path
+  source_code_hash = data.archive_file.lambda_compute_product_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_aggregate" {
+  function_name    = "${var.project_name}-lambda-aggregate-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_aggregate.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_aggregate_zip.output_path
+  source_code_hash = data.archive_file.lambda_aggregate_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
   environment { variables = { ENVIRONMENT = var.environment } }

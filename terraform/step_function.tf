@@ -22,7 +22,9 @@ resource "aws_iam_role_policy" "step_functions_policy" {
         Resource = [
           aws_lambda_function.lambda_one.arn,
           aws_lambda_function.lambda_two.arn,
-          aws_lambda_function.lambda_words.arn
+          aws_lambda_function.lambda_words.arn,
+          aws_lambda_function.lambda_compute_product.arn,
+          aws_lambda_function.lambda_aggregate.arn
         ]
       }
     ]
@@ -35,24 +37,82 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
   role_arn = aws_iam_role.step_functions_role.arn
   type     = "EXPRESS"
   definition = jsonencode({
-    Comment = "FastAPI workflow: Choice start -> either words path or numeric path",
+    Comment = "FastAPI workflow with product map branch",
     StartAt = "ValueDecision",
     States = {
       ValueDecision = {
-        Type    = "Choice",
+        Type = "Choice",
         Choices = [
           {
-            Variable     = "$.value",
+            Variable = "$.value",
             NumericGreaterThan = 10000,
-            Next         = "LambdaWords"
+            Next = "LambdaWords"
+          }
+        ],
+        Default = "ComputeProduct"
+      },
+      LambdaWords = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_words.arn,
+        Next = "SuccessState"
+      },
+      ComputeProduct = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_compute_product.arn,
+        Next = "ProductDecision"
+      },
+      ProductDecision = {
+        Type = "Choice",
+        Choices = [
+          {
+            Variable = "$.product",
+            NumericGreaterThan = 1000,
+            Next = "MapParts"
           }
         ],
         Default = "LambdaOne"
       },
-      LambdaWords = {
-        Type     = "Task",
-        Resource = aws_lambda_function.lambda_words.arn,
-        Next     = "SuccessState"
+      MapParts = {
+        Type = "Map",
+        ItemsPath = "$.parts",
+        MaxConcurrency = 5,
+        Parameters = {
+          "part.$" = "$$.MapItem.Value",
+          # Pass each part as both 'value' and keep multiplier 0 so words show number alone
+          "value.$" = "$$.MapItem.Value",
+          "multiplier" = 0
+        },
+        Iterator = {
+          StartAt = "WordsEachPart",
+          States = {
+            WordsEachPart = {
+              Type = "Task",
+              Resource = aws_lambda_function.lambda_words.arn,
+              End = true
+            }
+          }
+        },
+        ResultPath = "$.mapped_parts",
+        Next = "AggregateParts"
+      },
+      AggregateParts = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_aggregate.arn,
+        Parameters = {
+          "mapped.$" = "$.mapped_parts"
+        },
+        Next = "PostAggregateChoice"
+      },
+      PostAggregateChoice = {
+        Type = "Choice",
+        Choices = [
+          {
+            Variable = "$.aggregated_total",
+            NumericGreaterThan = 5000,
+            Next = "SuccessState"
+          }
+        ],
+        Default = "LambdaOne"
       },
       LambdaOne = {
         Type     = "Task",
