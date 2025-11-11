@@ -61,6 +61,27 @@ data "archive_file" "lambda_power_zip" {
   excludes    = ["__pycache__"]
 }
 
+data "archive_file" "lambda_map_prepare_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_map_prepare.zip"
+  excludes    = ["__pycache__"]
+}
+
+data "archive_file" "lambda_number_to_words_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_number_to_words.zip"
+  excludes    = ["__pycache__"]
+}
+
+data "archive_file" "lambda_aggregate_numbers_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_aggregate_numbers.zip"
+  excludes    = ["__pycache__"]
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role-${var.environment}"
   assume_role_policy = jsonencode({
@@ -169,6 +190,42 @@ resource "aws_lambda_function" "lambda_power" {
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_power_zip.output_path
   source_code_hash = data.archive_file.lambda_power_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_map_prepare" {
+  function_name    = "${var.project_name}-lambda-map-prepare-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_map_prepare.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_map_prepare_zip.output_path
+  source_code_hash = data.archive_file.lambda_map_prepare_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_number_to_words" {
+  function_name    = "${var.project_name}-lambda-number-to-words-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_number_to_words.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_number_to_words_zip.output_path
+  source_code_hash = data.archive_file.lambda_number_to_words_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_aggregate_numbers" {
+  function_name    = "${var.project_name}-lambda-aggregate-numbers-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_aggregate_numbers.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_aggregate_numbers_zip.output_path
+  source_code_hash = data.archive_file.lambda_aggregate_numbers_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
   environment { variables = { ENVIRONMENT = var.environment } }

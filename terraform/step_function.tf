@@ -22,7 +22,10 @@ resource "aws_iam_role_policy" "step_functions_policy" {
         Resource = [
           aws_lambda_function.lambda_add.arn,
           aws_lambda_function.lambda_multiply.arn,
-          aws_lambda_function.lambda_power.arn
+          aws_lambda_function.lambda_power.arn,
+          aws_lambda_function.lambda_map_prepare.arn,
+          aws_lambda_function.lambda_number_to_words.arn,
+          aws_lambda_function.lambda_aggregate_numbers.arn
         ]
       }
     ]
@@ -58,42 +61,59 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       AddOp = {
         Type = "Task",
         Resource = aws_lambda_function.lambda_add.arn,
-        ResultPath = "$.add_result",
-        Next = "RecordAdd"
-      },
-      RecordAdd = {
-        Type = "Pass",
-        # Parameters = {
-        #   name = "AddOp",
-        #   input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
-        #   output = { "result.$" = "$.add_result.result", "full.$" = "$.add_result" }
-        # },
-        # ResultPath = "$.trace.steps.AddOp",
-        Next = "Finalize"
+        ResultPath = "$.pre_result",
+        Next = "MapPrep"
       },
       MultiplyOp = {
         Type = "Task",
         Resource = aws_lambda_function.lambda_multiply.arn,
-        ResultPath = "$.multiply_result",
-        Next = "RecordMultiply"
-      },
-      RecordMultiply = {
-        Type = "Pass",
-        # Parameters = {
-        #   name = "MultiplyOp",
-        #   input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
-        #   output = { "result.$" = "$.multiply_result.result", "full.$" = "$.multiply_result" }
-        # },
-        # ResultPath = "$.trace.steps.MultiplyOp",
-        Next = "Finalize"
+        ResultPath = "$.pre_result",
+        Next = "MapPrep"
       },
       PowerOp = {
         Type = "Task",
         Resource = aws_lambda_function.lambda_power.arn,
-        ResultPath = "$.power_result",
-        Next = "RecordPower"
+        ResultPath = "$.pre_result",
+        Next = "MapPrep"
       },
-      RecordPower = {
+      MapPrep = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_map_prepare.arn,
+        ResultPath = "$.map_prep",
+        Next = "NumbersMap"
+      },
+      NumbersMap = {
+        Type = "Map",
+        ItemsPath = "$.map_prep.numbers",
+        Iterator = {
+          StartAt = "NumToWords",
+          States = {
+            NumToWords = {
+              Type = "Task",
+              Resource = aws_lambda_function.lambda_number_to_words.arn,
+              End = true
+            }
+          }
+        },
+        ResultPath = "$.words_items",
+        Next = "AggregateNumbers"
+      },
+      AggregateNumbers = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_aggregate_numbers.arn,
+        ResultPath = "$.numbers_summary",
+        Next = "SumToWords"
+      },
+      SumToWords = {
+        Type = "Task",
+        Resource = aws_lambda_function.lambda_number_to_words.arn,
+        Parameters = {
+          "value.$": "$.numbers_summary.sum"
+        },
+        ResultPath = "$.summary_words",
+        Next = "RecordOp"
+      },
+      RecordOp = {
         Type = "Pass",
         # Parameters = {
         #   name = "PowerOp",

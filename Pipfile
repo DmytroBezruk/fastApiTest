@@ -10,6 +10,7 @@ uvloop = "*"
 pydantic = "*"
 pydantic-settings = "*"
 boto3 = "*"
+num2words = "*"
 
 [requires]
 python_version = "3.12"

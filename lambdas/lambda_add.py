@@ -11,6 +11,7 @@ def lambda_handler(event, context):
         result = number + factor
         output = {
             "statusCode": 200,
+            "operation": "add",
             "result": result,
         }
         return output
