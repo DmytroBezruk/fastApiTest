@@ -65,7 +65,7 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
         Type = "Choice",
         Choices = [
           {
-            Variable = "$.product",
+            Variable = "$.product", # product now top-level from lambda_compute_product
             NumericGreaterThan = 1000,
             Next = "MapParts"
           }
@@ -74,7 +74,7 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       MapParts = {
         Type = "Map",
-        ItemsPath = "$.parts",
+        ItemsPath = "$.parts", # parts now top-level
         MaxConcurrency = 5,
         Parameters = {
           "part.$" = "$$.MapItem.Value",
