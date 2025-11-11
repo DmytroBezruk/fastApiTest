@@ -42,7 +42,7 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
         Type = "Pass",
         ResultPath = "$.trace",
         Result = {
-          steps = []
+          steps = {}  # use object map instead of array
         },
         Next = "BranchChoice"
       },
@@ -63,8 +63,12 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       RecordAdd = {
         Type = "Pass",
-        ResultPath = "$.trace.steps[0]",
-        Result = { name = "AddOp", input = { "number.$" = "$.number", "factor.$" = "$.factor" }, output = { "result.$" = "$.add_result.result" } },
+        Parameters = {
+          name = "AddOp",
+          input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+          output = { "result.$" = "$.add_result.result", "full.$" = "$.add_result" }
+        },
+        ResultPath = "$.trace.steps.AddOp",
         Next = "Finalize"
       },
       MultiplyOp = {
@@ -75,8 +79,12 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       RecordMultiply = {
         Type = "Pass",
-        ResultPath = "$.trace.steps[0]",
-        Result = { name = "MultiplyOp", input = { "number.$" = "$.number", "factor.$" = "$.factor" }, output = { "result.$" = "$.multiply_result.result" } },
+        Parameters = {
+          name = "MultiplyOp",
+          input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+          output = { "result.$" = "$.multiply_result.result", "full.$" = "$.multiply_result" }
+        },
+        ResultPath = "$.trace.steps.MultiplyOp",
         Next = "Finalize"
       },
       PowerOp = {
@@ -87,14 +95,23 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       RecordPower = {
         Type = "Pass",
-        ResultPath = "$.trace.steps[0]",
-        Result = { name = "PowerOp", input = { "number.$" = "$.number", "factor.$" = "$.factor" }, output = { "result.$" = "$.power_result.result" } },
+        Parameters = {
+          name = "PowerOp",
+          input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+          output = { "result.$" = "$.power_result.result", "full.$" = "$.power_result" }
+        },
+        ResultPath = "$.trace.steps.PowerOp",
         Next = "Finalize"
       },
       Finalize = {
         Type = "Pass",
+        Parameters = {
+          summary = {
+            input = { "number.$" = "$.number", "factor.$" = "$.factor", "branch.$" = "$.branch" },
+            "trace.$" = "$.trace.steps"
+          }
+        },
         ResultPath = "$.final",
-        Result = { summary = { "input.$" = "$" } },
         Next = "SuccessState"
       },
       SuccessState = { Type = "Succeed" },
