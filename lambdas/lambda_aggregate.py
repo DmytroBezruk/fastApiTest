@@ -24,13 +24,18 @@ def lambda_handler(event, context):
             total_numeric += num_val
             if "final_result_words" in body_json:
                 parts_words.append(body_json["final_result_words"])
+        orig_value = event.get("value")
+        orig_multiplier = event.get("multiplier")
+        orig_product = event.get("product")
         result = {
             "step": "lambda_aggregate",
             "aggregated_total": total_numeric,
             "parts_words": parts_words,
-            "parts_count": len(mapped)
+            "parts_count": len(mapped),
+            "value": orig_value,
+            "multiplier": orig_multiplier,
+            "product": orig_product
         }
-        return {"statusCode": 200, "body": json.dumps(result)}
+        return {"statusCode": 200, "aggregated_total": total_numeric, "parts_words": parts_words, "parts_count": len(mapped), "value": orig_value, "multiplier": orig_multiplier, "product": orig_product, "body": json.dumps(result)}
     except Exception as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}
-

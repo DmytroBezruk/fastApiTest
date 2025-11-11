@@ -32,7 +32,6 @@ def lambda_handler(event, context):
             "value": data.value,
             "multiplier": data.multiplier
         }
-        # Return product and parts also at top-level for Step Functions JSONPath
-        return {"statusCode": 200, "product": product, "parts": parts, "body": json.dumps(result)}
+        return {"statusCode": 200, "product": product, "parts": parts, "value": data.value, "multiplier": data.multiplier, "body": json.dumps(result)}
     except Exception as e:
         return {"statusCode": 400, "body": json.dumps({"error": str(e)})}

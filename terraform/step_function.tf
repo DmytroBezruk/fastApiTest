@@ -74,20 +74,18 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
       },
       MapParts = {
         Type = "Map",
-        ItemsPath = "$.parts", # parts now top-level
+        ItemsPath = "$.parts",
         MaxConcurrency = 5,
-        Parameters = {
-          "part.$" = "$$.MapItem.Value",
-          # Pass each part as both 'value' and keep multiplier 0 so words show number alone
-          "value.$" = "$$.MapItem.Value",
-          "multiplier" = 0
-        },
         Iterator = {
           StartAt = "WordsEachPart",
           States = {
             WordsEachPart = {
               Type = "Task",
               Resource = aws_lambda_function.lambda_words.arn,
+              Parameters = {
+                "value.$" = "$",  # current item value
+                "multiplier" = 0
+              },
               End = true
             }
           }
@@ -99,7 +97,10 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
         Type = "Task",
         Resource = aws_lambda_function.lambda_aggregate.arn,
         Parameters = {
-          "mapped.$" = "$.mapped_parts"
+          "mapped.$" = "$.mapped_parts",
+          "value.$" = "$.value",
+          "multiplier.$" = "$.multiplier",
+          "product.$" = "$.product"
         },
         Next = "PostAggregateChoice"
       },
