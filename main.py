@@ -1,3 +1,4 @@
+import enum
 import json
 
 import boto3
@@ -36,10 +37,16 @@ async def test_validation_and_secrets():
     }
 
 
+class Branch(enum.Enum):
+    one = "one"
+    two = "two"
+    three = "three"
+
+
 class StartStepRequest(BaseModel):
     number: int
     factor: int
-    branch: str
+    branch: Branch
 
 
 @app.post("/run-step-function")
@@ -49,7 +56,7 @@ def run_step_function(data: StartStepRequest):
         step_arn = f"arn:aws:states:{settings.AWS_REGION}:{settings.AWS_ACCOUNT_ID}:stateMachine:fastapi_step_function"
         response = sfn.start_sync_execution(
             stateMachineArn=step_arn,
-            input=json.dumps(data.model_dump())
+            input=json.dumps(data.model_dump(mode="json"))
         )
         output_raw = response.get("output")
         parsed = {}
@@ -58,6 +65,8 @@ def run_step_function(data: StartStepRequest):
                 parsed = json.loads(output_raw)
             except json.JSONDecodeError:
                 parsed = {"raw_output": output_raw}
+
+        print(f'\n\n{response = }\n\n')
         return {"execution": {
             "arn": response.get("executionArn"),
             "status": response.get("status"),
