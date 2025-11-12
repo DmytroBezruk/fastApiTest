@@ -47,6 +47,7 @@ class StartStepRequest(BaseModel):
     number: int
     factor: int
     branch: Branch
+    keyword: str = "!"
 
 
 @app.post("/run-step-function")

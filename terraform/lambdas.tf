@@ -82,6 +82,13 @@ data "archive_file" "lambda_aggregate_numbers_zip" {
   excludes    = ["__pycache__"]
 }
 
+data "archive_file" "lambda_word_postprocess_zip" {
+  type        = "zip"
+  source_dir  = local.lambda_source_dir
+  output_path = "build/lambda_word_postprocess.zip"
+  excludes    = ["__pycache__"]
+}
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-lambda-role-${var.environment}"
   assume_role_policy = jsonencode({
@@ -226,6 +233,18 @@ resource "aws_lambda_function" "lambda_aggregate_numbers" {
   runtime          = "python3.11"
   filename         = data.archive_file.lambda_aggregate_numbers_zip.output_path
   source_code_hash = data.archive_file.lambda_aggregate_numbers_zip.output_base64sha256
+  timeout          = 10
+  architectures    = ["x86_64"]
+  environment { variables = { ENVIRONMENT = var.environment } }
+}
+
+resource "aws_lambda_function" "lambda_word_postprocess" {
+  function_name    = "${var.project_name}-lambda-word-postprocess-${var.environment}"
+  role             = aws_iam_role.lambda_role.arn
+  handler          = "lambda_word_postprocess.lambda_handler"
+  runtime          = "python3.11"
+  filename         = data.archive_file.lambda_word_postprocess_zip.output_path
+  source_code_hash = data.archive_file.lambda_word_postprocess_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
   environment { variables = { ENVIRONMENT = var.environment } }

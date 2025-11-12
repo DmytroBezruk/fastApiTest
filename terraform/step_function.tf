@@ -25,7 +25,8 @@ resource "aws_iam_role_policy" "step_functions_policy" {
           aws_lambda_function.lambda_power.arn,
           aws_lambda_function.lambda_map_prepare.arn,
           aws_lambda_function.lambda_number_to_words.arn,
-          aws_lambda_function.lambda_aggregate_numbers.arn
+          aws_lambda_function.lambda_aggregate_numbers.arn,
+          aws_lambda_function.lambda_word_postprocess.arn
         ]
       }
     ]
@@ -91,6 +92,15 @@ resource "aws_sfn_state_machine" "fastapi_step_function" {
             NumToWords = {
               Type = "Task",
               Resource = aws_lambda_function.lambda_number_to_words.arn,
+              Next = "PostProcessWord"
+            },
+            PostProcessWord = {
+              Type = "Task",
+              Resource = aws_lambda_function.lambda_word_postprocess.arn,
+            Parameters = {
+                "value.$" = "$",
+                "keyword.$" = "$$.Execution.Input.keyword"
+              },
               End = true
             }
           }
