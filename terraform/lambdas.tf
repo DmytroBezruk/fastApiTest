@@ -106,6 +106,21 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy" "lambda_secrets_access" {
+  name = "${var.project_name}-lambda-secrets-${var.environment}"
+  role = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = ["secretsmanager:GetSecretValue"],
+        Resource = [aws_secretsmanager_secret.app_config.arn]
+      }
+    ]
+  })
+}
+
 resource "aws_lambda_function" "lambda_one" {
   function_name    = "${var.project_name}-lambda-one-${var.environment}"
   role             = aws_iam_role.lambda_role.arn
@@ -115,7 +130,7 @@ resource "aws_lambda_function" "lambda_one" {
   source_code_hash = data.archive_file.lambda_one_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_two" {
@@ -127,7 +142,7 @@ resource "aws_lambda_function" "lambda_two" {
   source_code_hash = data.archive_file.lambda_two_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_words" {
@@ -139,7 +154,7 @@ resource "aws_lambda_function" "lambda_words" {
   source_code_hash = data.archive_file.lambda_words_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_compute_product" {
@@ -151,7 +166,7 @@ resource "aws_lambda_function" "lambda_compute_product" {
   source_code_hash = data.archive_file.lambda_compute_product_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_aggregate" {
@@ -163,7 +178,7 @@ resource "aws_lambda_function" "lambda_aggregate" {
   source_code_hash = data.archive_file.lambda_aggregate_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_add" {
@@ -175,7 +190,7 @@ resource "aws_lambda_function" "lambda_add" {
   source_code_hash = data.archive_file.lambda_add_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_multiply" {
@@ -187,7 +202,7 @@ resource "aws_lambda_function" "lambda_multiply" {
   source_code_hash = data.archive_file.lambda_multiply_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_power" {
@@ -199,7 +214,7 @@ resource "aws_lambda_function" "lambda_power" {
   source_code_hash = data.archive_file.lambda_power_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_map_prepare" {
@@ -211,7 +226,7 @@ resource "aws_lambda_function" "lambda_map_prepare" {
   source_code_hash = data.archive_file.lambda_map_prepare_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_number_to_words" {
@@ -223,7 +238,7 @@ resource "aws_lambda_function" "lambda_number_to_words" {
   source_code_hash = data.archive_file.lambda_number_to_words_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_aggregate_numbers" {
@@ -235,7 +250,7 @@ resource "aws_lambda_function" "lambda_aggregate_numbers" {
   source_code_hash = data.archive_file.lambda_aggregate_numbers_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }
 
 resource "aws_lambda_function" "lambda_word_postprocess" {
@@ -247,5 +262,5 @@ resource "aws_lambda_function" "lambda_word_postprocess" {
   source_code_hash = data.archive_file.lambda_word_postprocess_zip.output_base64sha256
   timeout          = 10
   architectures    = ["x86_64"]
-  environment { variables = { ENVIRONMENT = var.environment } }
+  environment { variables = { ENVIRONMENT = var.environment, APP_CONFIG_SECRET_ARN = aws_secretsmanager_secret.app_config.arn } }
 }

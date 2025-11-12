@@ -1,7 +1,9 @@
 import enum
 import json
+import os
 
 import boto3
+from botocore.exceptions import ClientError
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -66,12 +68,22 @@ def run_step_function(data: StartStepRequest):
                 parsed = json.loads(output_raw)
             except json.JSONDecodeError:
                 parsed = {"raw_output": output_raw}
-
+        # Fetch secret directly from API side (same one lambdas use) to prove shared access
+        secret_value_api = None
+        secret_arn_env = os.environ.get("APP_CONFIG_SECRET_ARN")  # optionally expose this via .env
+        if secret_arn_env:
+            try:
+                sm = boto3.client("secretsmanager", region_name=settings.AWS_REGION)
+                sec_resp = sm.get_secret_value(SecretId=secret_arn_env)
+                secret_value_api = sec_resp.get("SecretString") or sec_resp.get("SecretBinary")
+            except ClientError as ce:  # noqa: BLE001
+                secret_value_api = f"error:{ce}"
         print(f'\n\n{response = }\n\n')
         return {"execution": {
             "arn": response.get("executionArn"),
             "status": response.get("status"),
-            "result": parsed
+            "result": parsed,
+            "api_secret_snapshot": secret_value_api
         }}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

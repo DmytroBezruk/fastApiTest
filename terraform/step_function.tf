@@ -18,7 +18,7 @@ resource "aws_iam_role_policy" "step_functions_policy" {
     Statement = [
       {
         Effect = "Allow"
-        Action = ["lambda:InvokeFunction"],
+        Action = ["lambda:InvokeFunction", "secretsmanager:GetSecretValue"],
         Resource = [
           aws_lambda_function.lambda_add.arn,
           aws_lambda_function.lambda_multiply.arn,
@@ -26,7 +26,8 @@ resource "aws_iam_role_policy" "step_functions_policy" {
           aws_lambda_function.lambda_map_prepare.arn,
           aws_lambda_function.lambda_number_to_words.arn,
           aws_lambda_function.lambda_aggregate_numbers.arn,
-          aws_lambda_function.lambda_word_postprocess.arn
+          aws_lambda_function.lambda_word_postprocess.arn,
+          aws_secretsmanager_secret.app_config.arn
         ]
       }
     ]
